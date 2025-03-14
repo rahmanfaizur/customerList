@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // Define the Customer interface
 interface Customer {
@@ -57,14 +57,30 @@ const List: Customer[] = [
 
 export default function SearchCustomer() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-    const filteredCustomers = List.filter(customer => {
-        if (searchTerm === '') return true;
-        
-        return Object.values(customer).some(value => 
-            value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    });
+    // Debounce search term updates
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300); // 300ms delay
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Memoize filter function
+    const filteredCustomers = useCallback(() => {
+        return List.filter(customer => {
+            if (debouncedSearchTerm === '') return true;
+            
+            return Object.values(customer).some(value => 
+                value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+            );
+        });
+    }, [debouncedSearchTerm]);
+
+    // Memoized results
+    const customers = filteredCustomers();
 
     return (
         <div>
@@ -76,7 +92,7 @@ export default function SearchCustomer() {
                 placeholder="Search customers..."
             />
 
-            {filteredCustomers.length > 0 ? (
+            {customers.length > 0 ? (
                 <table data-testid="searched-customers">
                     <thead>
                         <tr>
@@ -88,7 +104,7 @@ export default function SearchCustomer() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredCustomers.map((customer, index) => (
+                        {customers.map((customer, index) => (
                             <tr key={index}>
                                 <td>{customer.name}</td>
                                 <td>{customer.age}</td>
